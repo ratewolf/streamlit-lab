@@ -1,29 +1,48 @@
 import streamlit as st
+from google import genai
+from google.genai import types
 
-st.title("🍱 점심 메뉴 고르기")
+MODEL_NAME = "gemini-3.5-flash-lite"
 
-# ---------- 사이드바 : 화면 왼쪽 접히는 칸 ----------
-st.sidebar.header("조건")
-budget = st.sidebar.slider("예산 (원)", min_value=5000, max_value=15000, value=10000, step=1000)
-spicy = st.sidebar.checkbox("매운 음식 괜찮음")
 
-# ---------- 본문 ----------
-category = st.selectbox("종류", ["한식", "분식", "중식", "양식"])
-menus = {
-    "한식": [("김치찌개", 8000, True), ("비빔밥", 9000, False), ("제육볶음", 9500, True)],
-    "분식": [("떡볶이", 5000, True), ("김밥", 5000, False), ("라면", 6000, True)],
-    "중식": [("짜장면", 7000, False), ("짬뽕", 8000, True), ("볶음밥", 8000, False)],
-    "양식": [("토마토 파스타", 12000, False), ("돈가스", 10000, False), ("매운 크림 파스타", 13000, True)],
-}
+# ---------- ① client 만들기 : 키는 st.secrets 에서 읽음 (코드에 적지 않음) ----------
+@st.cache_resource                          # 처음 한 번만 만들고, 다시 실행될 때는 만들어 둔 것을 그대로 씀
+def get_client():
+    """Gemini client 를 만들어 돌려준다"""
+    return genai.Client(
+        api_key=st.secrets["GEMINI_API_KEY"],
+        http_options=types.HttpOptions(
+            timeout=120_000,                                   # 2분 안에 답이 없으면 멈춤
+            retry_options=types.HttpRetryOptions(http_status_codes=[500, 503]),   # 429 는 말없이 기다리지 않게
+        ),
+    )
 
-# 조건에 맞는 메뉴만 남김 — 예산 이하이고, 매운 음식이 싫으면 매운 메뉴는 뺌
-choices = [name for name, price, is_spicy in menus[category] if price <= budget and (spicy or not is_spicy)]
 
-left, right = st.columns(2)                 # 화면을 두 칸으로 나눔
-left.metric("조건에 맞는 메뉴", f"{len(choices)}개")
-right.metric("예산", f"{budget:,}원")
+# ---------- 키가 있는지 먼저 확인 ----------
+try:
+    client = get_client()
+except Exception:
+    st.error("🔑 GEMINI_API_KEY 를 찾지 못했습니다 — Manage app → ⋮ → Settings → Secrets 칸을 확인하세요.")
+    st.stop()                               # 여기서 화면 그리기를 멈춤
 
-if choices:
-    st.write("추천 :", " · ".join(choices))
-else:
-    st.warning("조건에 맞는 메뉴가 없습니다. 예산을 올려 보세요.")
+# ---------- ② 화면 + 요청 ----------
+st.title("📝 AI 용어 설명기")
+st.caption(f"모델 : {MODEL_NAME}")
+
+style = st.selectbox("말투", ["초등학생도 알아듣게 쉽게", "전공 수업처럼 정확하게", "재미있는 비유를 들어"])
+word = st.text_input("궁금한 용어", placeholder="예: API · 토큰 · 시스템 프롬프트")
+
+if st.button("설명 듣기", disabled=(word.strip() == "")):        # 용어를 넣기 전에는 버튼이 꺼져 있음
+    with st.spinner("Gemini 가 답을 쓰는 중..."):                 # 기다리는 동안 빙글빙글 표시
+        try:
+            reply = client.interactions.create(
+                model=MODEL_NAME,
+                store=False,
+                system_instruction=f"너는 AI 용어 설명 도우미야. {style} 3문장 이내로 설명한다.",
+                input=word,
+            )
+        except Exception as error:
+            st.error(error)                       # 우선 오류를 그대로 보여 줌 (2-3 에서 한글로 바꿈)
+        else:
+            st.markdown(reply.output_text)                       # ** 굵게 같은 마크다운도 그대로 보여 줌
+            st.caption(f"이번 요청 토큰 : {reply.usage.total_tokens}")
