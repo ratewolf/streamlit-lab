@@ -197,7 +197,7 @@ def error_message(exc):
 
 
 def main():
-    st.set_page_config(page_title="AI 토론장", page_icon="⚖️", layout="wide")
+    st.set_page_config(page_title="AI 토론장 - 2501110212 성길수", page_icon="⚖️", layout="wide")
     st.title("⚖️ AI 토론장")
     st.caption("찬성봇과 반대봇이 토론하고, 세 심판이 독립적으로 평가한 뒤 다수결로 판정합니다. · 실제 AI")
     st.session_state.setdefault("debate", new_debate())
