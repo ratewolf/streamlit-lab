@@ -1,6 +1,9 @@
-# 📋 app.py · [실습 A] 첫 배포용 가장 작은 앱 (요청 없음)
-import streamlit as st
+import streamlit as st                      # Streamlit 을 st 라는 짧은 이름으로 씀
 
-st.title("✅ 첫 배포 성공!")
-st.write("이 화면이 보이면 GitHub 저장소 → Streamlit Community Cloud 연결이 끝난 것입니다.")
-st.write("이제 app.py 를 고쳐 Commit 할 때마다 이 주소의 화면이 바뀝니다.")
+st.title("🎈 나의 첫 Streamlit 앱")          # 큰 제목
+st.write("Streamlit 은 파이썬 코드만으로 웹 화면을 만듭니다.")   # 글 · 숫자 · 표 무엇이든 찍어 줌
+
+nickname = st.text_input("별명을 입력하세요")  # 입력칸 — 입력한 글이 nickname 에 들어옴
+
+if st.button("인사하기"):                      # 버튼 — 누른 그 순간에만 True
+    st.success(f"{nickname} 님, 반가워요!")    # 초록색 알림 상자
